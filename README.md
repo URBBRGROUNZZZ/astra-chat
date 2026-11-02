@@ -19,11 +19,11 @@ npm run dev
 
 ## 使用
 
-1. 点击右上角的连接设置，分别填写 GPT / Claude 的 API Key。
+1. 直接输入消息即可聊天，GPT / Claude 默认连接和密钥已内置，无需手动输入。
 2. 按需修改接口地址、模型 ID 和接口格式。预填值来自本机非敏感配置：`https://xcode.best/v1`、`gpt-6-astra`（Responses）、`claude-opus-5-5`（Anthropic Messages）。具体可用模型以你的中转服务为准。
 3. 在顶部选择模型，开始聊天。支持流式回复、停止、复制、Markdown、失败重试。
 
-模型切换保留当前上下文，点击「+」开启新会话。刷新或重新打开网页会清空聊天与密钥。只将接口地址、模型 ID 和接口格式保存在 localStorage；不保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
+模型切换保留当前上下文，点击「+」开启新会话。刷新或重新打开网页会清空聊天，并自动恢复内置密钥。手动覆盖的密钥仅在当前页面有效。只将接口地址、模型 ID 和接口格式保存在 localStorage；不在浏览器存储中保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
 
 桌面使用 Enter 发送、Shift + Enter 换行；手机使用发送按钮，回车换行。复制需要 HTTPS 或 localhost；局域网 HTTP 环境可以长按选择文字复制。
 
@@ -53,7 +53,9 @@ npm run build
 npm run build -- --base=/astra-chat/
 ```
 
-仓库与构建产物中不应加入 API Key。本项目不依赖服务端环境变量，也不会自动读取本机密钥。
+按站点所有者要求，默认 API Key 使用 AES-256-GCM 加密后内置在前端，浏览器自动解密。解密材料也随网页发布，因此访问者仍可提取密钥；这只避免源码中的明文展示，不构成访问控制。
+
+显式运行 `node scripts/embed-credentials.mjs` 可从本机 Codex / Claude 配置重新生成 `src/embedded-credentials.json`，然后提交并推送以更新线上版本。生成器不会打印或落盘明文密钥，普通构建不会读取本机配置。自动解密需要 HTTPS 或 localhost；换用其他接口地址时需要自行配置密钥。
 
 ## 验证
 

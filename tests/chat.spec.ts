@@ -25,7 +25,8 @@ test('welcome, settings, small viewport and keyboard accessibility', async ({ pa
   await expect(page.getByRole('heading', { level: 1 })).toContainText('让想法');
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '梳理一个想法' }).click();
-  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '消息', exact: true })).toHaveValue('我有一个想法，想和你一起梳理一下。');
+  await page.getByRole('button', { name: '连接设置', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: '关闭设置' }).click();
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('');
@@ -39,6 +40,43 @@ test('welcome, settings, small viewport and keyboard accessibility', async ({ pa
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+test('bundled credentials work for both models without input and reload starts fresh', async ({ page }) => {
+  const calls: { provider: string; turns: number; authorized: boolean }[] = [];
+  await page.route('https://xcode.best/v1/**', async (route) => {
+    const request = route.request();
+    const body = request.postDataJSON();
+    if (request.url().endsWith('/responses')) {
+      calls.push({ provider: 'gpt', turns: body.input.length, authorized: Boolean(request.headers().authorization?.startsWith('Bearer ')) });
+      await route.fulfill({ contentType: 'text/event-stream', body: responseBody('自动连接 GPT。') });
+    } else {
+      calls.push({ provider: 'claude', turns: body.messages.length, authorized: Boolean(request.headers()['x-api-key']) });
+      await route.fulfill({ contentType: 'text/event-stream', body:
+        frame({ type: 'content_block_delta', delta: { type: 'text_delta', text: '自动连接 Claude。' } }) + frame({ type: 'message_stop' }),
+      });
+    }
+  });
+  await page.goto('/');
+  await expect(page.locator('.status-dot.ready')).toBeVisible();
+  await send(page, '直接开始');
+  await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');
+  await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
+  await page.getByRole('button', { name: 'Claude claude-opus-5-5' }).click();
+  await send(page, '切换模型');
+  await expect(page.locator('.markdown').last()).toHaveText('自动连接 Claude。');
+  await page.reload();
+  await expect(page.locator('.user-bubble')).toHaveCount(0);
+  await expect(page.locator('.status-dot.ready')).toBeVisible();
+  await send(page, '新的会话');
+  await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');
+  expect(calls).toEqual([
+    { provider: 'gpt', turns: 1, authorized: true },
+    { provider: 'claude', turns: 3, authorized: true },
+    { provider: 'gpt', turns: 1, authorized: true },
+  ]);
+  expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
 });
 
 test('Responses stream, conversation context, refresh isolation and secret storage', async ({ page }, info) => {

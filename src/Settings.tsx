@@ -34,7 +34,7 @@ export default function Settings({ connections, selected, onClose, onSave }: Pro
           <div><span className="eyebrow">MAKE A CONNECTION</span><h2 id="settings-title">连接你的模型</h2></div>
           <button className="icon-button" onClick={onClose} aria-label="关闭设置"><X size={20} /></button>
         </div>
-        <p className="settings-intro">准备好密钥，剩下的交给对话。</p>
+        <p className="settings-intro">默认连接已准备好，也可以在这里调整。</p>
         <div className="provider-tabs" aria-label="配置模型">
           {providers.map((provider) => (
             <button key={provider.id} type="button" aria-pressed={tab === provider.id}
@@ -82,7 +82,7 @@ export default function Settings({ connections, selected, onClose, onSave }: Pro
               </button>
             </span>
           </label>
-          <p className="field-note">密钥仅用于当前页面，刷新后需重新输入。地址与模型设置会保留。</p>
+          <p className="field-note">默认密钥会自动载入；手动修改的密钥仅用于当前页面。地址与模型设置会保留。</p>
           {error && <p className="settings-error" role="alert">{error}</p>}
           <button className="save-button" type="submit">保存连接<ArrowUpRight size={18} /></button>
         </form>
