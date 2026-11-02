@@ -1,12 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Plus, RotateCcw, SlidersHorizontal, Square } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Plus, RotateCcw, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { streamChat } from './api';
 import type { Turn } from './api';
-import { loadConnections, providers, saveConnections } from './config';
+import { loadConnections, providers } from './config';
 import type { ProviderId } from './config';
-import Settings from './Settings';
 import { useViewport } from './useViewport';
 
 interface Message extends Turn {
@@ -36,15 +35,13 @@ function CopyButton({ text }: { text: string }) {
 
 export default function App() {
   useViewport();
-  const [connections, setConnections] = useState(loadConnections);
+  const [connections] = useState(loadConnections);
   const [selected, setSelected] = useState<ProviderId>('gpt');
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
-  const [notice, setNotice] = useState('');
   const textarea = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -52,7 +49,6 @@ export default function App() {
   const pinned = useRef(true);
   const current = connections[selected];
   const currentName = providers.find((provider) => provider.id === selected)!.name;
-  const ready = Boolean(current.apiKey.trim());
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -65,8 +61,6 @@ export default function App() {
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
   }, [menuOpen]);
 
-  useEffect(() => { if (notice) { const timer = setTimeout(() => setNotice(''), 2600); return () => clearTimeout(timer); } }, [notice]);
-
   useLayoutEffect(() => {
     const element = textarea.current;
     if (element) { element.style.height = 'auto'; element.style.height = `${Math.min(element.scrollHeight, 144)}px`; }
@@ -78,7 +72,6 @@ export default function App() {
 
   async function send(retry = false) {
     if (controller.current) return;
-    if (!ready) { setMenuOpen(false); setSettingsOpen(true); return; }
     let history: Message[];
     if (retry) {
       history = messages.slice(0, -1);
@@ -100,6 +93,7 @@ export default function App() {
     const timeout = () => { timedOut = true; abort.abort(); };
     let timer = setTimeout(timeout, 120_000);
     try {
+      if (!current.apiKey.trim()) throw new Error('连接未能初始化，请刷新页面后重试。');
       await streamChat(current, history.filter((item) => item.content && item.status !== 'error')
         .map(({ role, content }) => ({ role, content })), abort.signal, (content) => {
           clearTimeout(timer); timer = setTimeout(timeout, 120_000); update({ content });
@@ -132,7 +126,6 @@ export default function App() {
         <div className="header-actions">
           <button className="icon-button" title="新对话" aria-label="新对话" disabled={busy || messages.length === 0}
             onClick={() => { setMessages([]); setDraft(''); setShowScroll(false); pinned.current = true; }}><Plus size={21} strokeWidth={1.5} /></button>
-          <button className="icon-button" title="连接设置" aria-label="连接设置" disabled={busy} onClick={() => setSettingsOpen(true)}><SlidersHorizontal size={18} strokeWidth={1.5} /></button>
         </div>
       </header>
 
@@ -177,10 +170,6 @@ export default function App() {
       </footer>
 
       <span className="sr-only" role="status">{busy ? '模型正在回复' : messages.length ? '可以继续发送消息' : ''}</span>
-      {notice && <div className="toast" role="status"><Check size={15} />{notice}</div>}
-      {settingsOpen && <Settings connections={connections} selected={selected} onClose={() => setSettingsOpen(false)} onSave={(next) => {
-        setConnections(next); saveConnections(next); setSettingsOpen(false); setNotice('连接设置已保存');
-      }} />}
     </div>
   );
 }

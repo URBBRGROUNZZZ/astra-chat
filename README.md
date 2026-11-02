@@ -20,10 +20,11 @@ npm run dev
 ## 使用
 
 1. 直接输入消息即可聊天，GPT / Claude 默认连接和密钥已内置，无需手动输入。
-2. 按需修改接口地址、模型 ID 和接口格式。预填值来自本机非敏感配置：`https://xcode.best/v1`、`gpt-6-astra`（Responses）、`claude-opus-5-5`（Anthropic Messages）。具体可用模型以你的中转服务为准。
-3. 在顶部选择模型，开始聊天。支持流式回复、停止、复制、Markdown、失败重试。
+2. 在顶部选择 GPT 或 Claude，开始聊天。支持流式回复、停止、复制、Markdown、失败重试。
 
-模型切换保留当前上下文，点击「+」开启新会话。刷新或重新打开网页会清空聊天，并自动恢复内置密钥。手动覆盖的密钥仅在当前页面有效。只将接口地址、模型 ID 和接口格式保存在 localStorage；不在浏览器存储中保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
+网页不提供连接配置、密钥输入或密钥查看功能。连接地址和模型由维护者在 `src/config.ts` 中管理。
+
+模型切换保留当前上下文，点击「+」开启新会话。刷新或重新打开网页会清空聊天，并自动恢复内置连接。不读取旧版本的浏览器连接设置，不在浏览器存储中保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
 
 桌面使用 Enter 发送、Shift + Enter 换行；手机使用发送按钮，回车换行。复制需要 HTTPS 或 localhost；局域网 HTTP 环境可以长按选择文字复制。
 

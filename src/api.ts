@@ -70,8 +70,8 @@ export async function streamChat(
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     const messages: Record<number, string> = {
-      401: '密钥无效或已过期，请在连接设置中检查。',
-      403: '服务拒绝了请求，请检查密钥权限或中转服务设置。',
+      401: '模型连接认证失败。',
+      403: '服务暂时拒绝了请求，请稍后重试。',
       404: '找不到接口或模型，请检查接口地址、接口格式和模型 ID。',
       429: '请求过于频繁或额度不足，请稍后重试或检查账户额度。',
     };
