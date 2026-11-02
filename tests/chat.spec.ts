@@ -14,6 +14,7 @@ test('minimal chat exposes no connection or credential controls', async ({ page 
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('log', { name: '当前对话' })).toBeEmpty();
+  await expect(page.locator('.empty-mark')).toHaveText('?');
   await expect(page.getByRole('heading')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: /设置|密钥|key/i })).toHaveCount(0);
@@ -46,6 +47,7 @@ test('bundled credentials work for both models without input and reload starts f
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'GPT', exact: true })).toBeVisible();
   await send(page, '直接开始');
+  await expect(page.locator('.empty-mark')).toHaveCount(0);
   await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
   await page.getByRole('button', { name: 'GPT', exact: true }).click();
@@ -54,6 +56,7 @@ test('bundled credentials work for both models without input and reload starts f
   await expect(page.locator('.markdown').last()).toHaveText('自动连接 Claude。');
   await page.reload();
   await expect(page.locator('.user-bubble')).toHaveCount(0);
+  await expect(page.locator('.empty-mark')).toHaveText('?');
   await expect(page.getByRole('button', { name: 'GPT', exact: true })).toBeVisible();
   await send(page, '新的会话');
   await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');

@@ -133,6 +133,7 @@ export default function App() {
         const element = scroller.current;
         if (element) { pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 100; setShowScroll(!pinned.current); }
       }}>
+        {messages.length === 0 && <div className="empty-mark" aria-hidden="true">?</div>}
         <div className="conversation" role="log" aria-label="当前对话" aria-live="off">
           {messages.map((message, index) => <article key={message.id} className={`message message-${message.role}`}>
             {message.role === 'user' ? <div className="user-bubble">{message.content}</div> : <>
