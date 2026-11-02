@@ -67,4 +67,6 @@ npm run build
 
 浏览器测试覆盖 Chromium 桌面、Android 尺寸和 iPhone WebKit，包括接口格式、上下文、刷新清空、密钥不落盘、断流、重试与停止。测试使用模拟接口，不会调用收费模型。字体随构建本地托管，不依赖 Google Fonts 在线服务。
 
-标题使用 Noto Serif SC 的静态字形子集，正文使用 Inter 与系统中文字体。已生成的字体资源包含在 `src/fonts/`，正常构建无需额外工具。修改标题字样后，可按 `scripts/subset-title-font.py` 中的说明重新生成子集。字体授权随 `public/font-licenses/` 一并部署。
+界面使用纯黑白灰配色，字体为 Inter 与系统中文字体。首页只保留模型选择、必要操作和输入框，没有欢迎文案或推荐问题。字体授权随 `public/font-licenses/` 一并部署。
+
+页面固定在可视区域内，仅消息区滚动。监听 Visual Viewport 的高度与偏移变化，处理手机键盘和 Safari 视口平移；输入框始终使用 16px 字号避免聚焦缩放。自动测试模拟键盘展开、收起、视口平移和多行输入；真实设备键盘仍需实机确认。

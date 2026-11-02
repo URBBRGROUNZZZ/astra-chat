@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Check, Eye, EyeOff, X } from 'lucide-react';
+import { Check, Eye, EyeOff, X } from 'lucide-react';
 import { endpointFor } from './api';
 import { providers } from './config';
 import type { Connections, ProviderId, Protocol } from './config';
@@ -31,16 +31,15 @@ export default function Settings({ connections, selected, onClose, onSave }: Pro
       onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="settings-inner">
         <div className="settings-heading">
-          <div><span className="eyebrow">MAKE A CONNECTION</span><h2 id="settings-title">连接你的模型</h2></div>
+          <h2 id="settings-title">连接设置</h2>
           <button className="icon-button" onClick={onClose} aria-label="关闭设置"><X size={20} /></button>
         </div>
-        <p className="settings-intro">默认连接已准备好，也可以在这里调整。</p>
         <div className="provider-tabs" aria-label="配置模型">
           {providers.map((provider) => (
             <button key={provider.id} type="button" aria-pressed={tab === provider.id}
               className={tab === provider.id ? 'active' : ''}
               onClick={() => { setTab(provider.id); setVisible(false); setError(''); }}>
-              {provider.name}<span>{provider.subtitle}</span>
+              {provider.name}
               {draft[provider.id].apiKey.trim() && <Check size={13} />}
             </button>
           ))}
@@ -82,11 +81,9 @@ export default function Settings({ connections, selected, onClose, onSave }: Pro
               </button>
             </span>
           </label>
-          <p className="field-note">默认密钥会自动载入；手动修改的密钥仅用于当前页面。地址与模型设置会保留。</p>
           {error && <p className="settings-error" role="alert">{error}</p>}
-          <button className="save-button" type="submit">保存连接<ArrowUpRight size={18} /></button>
+          <button className="save-button" type="submit">保存连接</button>
         </form>
-        <p className="settings-footnote">浏览器直连接口 · 本站不保存聊天记录<br />接口服务的数据保留规则由服务方决定。</p>
       </div>
     </dialog>
   );
