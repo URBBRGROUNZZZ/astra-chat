@@ -35,7 +35,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .conversation:empty { padding: 0; }
 .message { margin-bottom: 28px; }
 .message:last-child { margin-bottom: 0; }
-.message-user { display: flex; justify-content: flex-end; }
+.message-user { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .user-bubble { max-width: 85%; padding: 12px 18px; background: #f3f3f3; border-radius: 20px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.75; }
 .markdown { font-size: 16px; line-height: 1.85; overflow-wrap: anywhere; }
 .markdown > :first-child { margin-top: 0; }
@@ -66,7 +66,25 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .thinking i:nth-child(2) { animation-delay: .15s; } .thinking i:nth-child(3) { animation-delay: .3s; }
 @keyframes breathe { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
 .composer-area { position: relative; flex: 0 0 auto; width: min(calc(100% - 48px), 740px); margin: 0 auto; padding: 8px 0 max(20px, env(safe-area-inset-bottom)); }
-.composer { display: flex; align-items: flex-end; gap: 12px; padding: 10px 10px 10px 20px; border: 1px solid #e5e5e5; border-radius: 28px; background: #fafafa; }
+.composer { padding: 10px; border: 1px solid #e5e5e5; border-radius: 28px; background: #fafafa; }
+.composer-row { display: flex; align-items: flex-end; gap: 8px; }
+.attach-button { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 36px; height: 40px; border-radius: 50%; color: #555; }
+.attachments { display: flex; gap: 8px; min-width: 0; max-width: 100%; }
+.pending-attachments { overflow-x: auto; padding: 4px 4px 12px; scrollbar-width: thin; }
+.attachment { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 8px; width: 170px; height: 56px; padding: 8px; border: 1px solid #ddd; border-radius: 12px; background: #fff; }
+.attachment > svg { flex-shrink: 0; color: #666; }
+.attachment img { width: 38px; height: 38px; flex-shrink: 0; border-radius: 5px; object-fit: cover; }
+.attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.pending-attachments .attachment-name { padding-right: 18px; }
+.remove-attachment { position: absolute; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #fff; }
+.sent-attachments { justify-content: flex-end; flex-wrap: wrap; }
+.sent-attachments .attachment-image { width: 140px; height: auto; display: block; padding: 0; overflow: hidden; }
+.sent-attachments .attachment-image img { display: block; width: 100%; height: 120px; object-fit: contain; border-radius: 0; }
+.sent-attachments .attachment-image .attachment-name { display: block; padding: 8px; }
+.file-reading { padding: 4px 8px 10px; color: #777; font-size: 12px; }
+.file-error { display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px 10px; font-size: 12px; color: #555; }
+.file-error span { flex: 1; max-height: 72px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.file-error button { flex-shrink: 0; padding: 0; }
 .composer:focus-within { border-color: #bbb; }
 .composer textarea { display: block; flex: 1; min-width: 0; min-height: 40px; max-height: min(144px, 30dvh); padding: 8px 0; border: 0; background: none; color: #111; font-size: 16px; line-height: 24px; resize: none; scrollbar-width: thin; }
 .composer textarea::placeholder { color: #888; }
@@ -77,7 +95,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   .site-header { padding-right: 12px; padding-left: 12px; padding-bottom: 6px; }
   .conversation { width: calc(100% - 40px); padding: 18px 0; }
   .composer-area { width: calc(100% - 24px); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-  .composer { gap: 8px; padding-left: 16px; }
+  .composer-row { gap: 6px; }
   .user-bubble { max-width: 90%; padding: 10px 16px; }
 }
 @media (hover: hover) {

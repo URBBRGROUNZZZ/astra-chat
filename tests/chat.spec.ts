@@ -18,7 +18,7 @@ test('minimal chat exposes no connection or credential controls', async ({ page 
   await expect(page.getByRole('heading')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: /设置|密钥|key/i })).toHaveCount(0);
-  await expect(page.locator('input, select, dialog')).toHaveCount(0);
+  await expect(page.locator('input:not([type="file"]), select, dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await expect(page.locator('#model-options button')).toHaveText(['GPT', 'Claude']);
   await page.keyboard.press('Escape');
@@ -82,7 +82,7 @@ test('old saved settings cannot override the built-in connection', async ({ page
   await send(page, '继续使用');
   await expect(page.locator('.markdown')).toHaveText('连接正常。');
   expect(calledBuiltIn).toBe(true);
-  await expect(page.locator('input, select, dialog')).toHaveCount(0);
+  await expect(page.locator('input:not([type="file"]), select, dialog')).toHaveCount(0);
 });
 
 test('Responses stream, conversation context, refresh isolation and secret storage', async ({ page }, info) => {
@@ -111,7 +111,7 @@ test('Responses stream, conversation context, refresh isolation and secret stora
   await page.screenshot({ path: `test-results/conversation-${info.project.name}.png`, fullPage: true, animations: 'disabled' });
   await page.reload();
   await expect(page.getByRole('log', { name: '当前对话' })).toBeEmpty();
-  await expect(page.locator('input, select, dialog')).toHaveCount(0);
+  await expect(page.locator('input:not([type="file"]), select, dialog')).toHaveCount(0);
 });
 
 test('Claude model switch uses Messages format and keeps current context', async ({ page }) => {

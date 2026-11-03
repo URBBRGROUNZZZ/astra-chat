@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Plus, RotateCcw, Square } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { streamChat } from './api';
@@ -7,6 +7,9 @@ import type { Turn } from './api';
 import { loadConnections, providers } from './config';
 import type { ProviderId } from './config';
 import { useViewport } from './useViewport';
+import { FILE_ACCEPT, MAX_FILES, MAX_TOTAL_BYTES, readAttachment } from './attachments';
+import type { Attachment } from './attachments';
+import AttachmentList from './AttachmentList';
 
 interface Message extends Turn {
   id: string;
@@ -40,6 +43,11 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [readingFiles, setReadingFiles] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const reading = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -70,16 +78,43 @@ export default function App() {
     if (pinned.current && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
   }, [messages, busy]);
 
+  async function addFiles(files: File[]) {
+    if (!files.length || reading.current || controller.current) return;
+    reading.current = true;
+    setReadingFiles(true);
+    setFileError('');
+    const next = [...attachments];
+    const errors: string[] = [];
+    try {
+      for (const file of files) {
+        if (next.length >= MAX_FILES) { errors.push('一次最多添加 6 个附件。'); break; }
+        if (next.reduce((total, item) => total + item.size, 0) + file.size > MAX_TOTAL_BYTES) {
+          errors.push(`${file.name}：附件总大小不能超过 15 MB。`);
+          continue;
+        }
+        try { next.push(await readAttachment(file)); }
+        catch (error) { errors.push(`${file.name}：${error instanceof Error ? error.message : '文件读取失败。'}`); }
+      }
+      setAttachments(next);
+      setFileError(errors.join('\n'));
+    } finally {
+      reading.current = false;
+      setReadingFiles(false);
+    }
+  }
+
   async function send(retry = false) {
-    if (controller.current) return;
+    if (controller.current || reading.current) return;
     let history: Message[];
     if (retry) {
       history = messages.slice(0, -1);
     } else {
       const content = draft.trim();
-      if (!content) return;
-      history = [...messages, { id: messageId(), role: 'user', content }];
+      if (!content && !attachments.length) return;
+      history = [...messages, { id: messageId(), role: 'user', content, ...(attachments.length ? { attachments } : {}) }];
       setDraft('');
+      setAttachments([]);
+      setFileError('');
     }
     const id = messageId();
     const abort = new AbortController();
@@ -94,8 +129,8 @@ export default function App() {
     let timer = setTimeout(timeout, 120_000);
     try {
       if (!current.apiKey.trim()) throw new Error('连接未能初始化，请刷新页面后重试。');
-      await streamChat(current, history.filter((item) => item.content && item.status !== 'error')
-        .map(({ role, content }) => ({ role, content })), abort.signal, (content) => {
+      await streamChat(current, history.filter((item) => (item.content || item.attachments?.length) && item.status !== 'error')
+        .map(({ role, content, attachments }) => ({ role, content, attachments })), abort.signal, (content) => {
           clearTimeout(timer); timer = setTimeout(timeout, 120_000); update({ content });
         });
       update({ status: 'done' });
@@ -124,8 +159,8 @@ export default function App() {
             </div>}
           </div>
         <div className="header-actions">
-          <button className="icon-button" title="新对话" aria-label="新对话" disabled={busy || messages.length === 0}
-            onClick={() => { setMessages([]); setDraft(''); setShowScroll(false); pinned.current = true; }}><Plus size={21} strokeWidth={1.5} /></button>
+          <button className="icon-button" title="新对话" aria-label="新对话" disabled={busy || readingFiles || (messages.length === 0 && attachments.length === 0 && !draft && !fileError)}
+            onClick={() => { setMessages([]); setDraft(''); setAttachments([]); setFileError(''); setShowScroll(false); pinned.current = true; }}><Plus size={21} strokeWidth={1.5} /></button>
         </div>
       </header>
 
@@ -136,7 +171,10 @@ export default function App() {
         {messages.length === 0 && <div className="empty-mark" aria-hidden="true">?</div>}
         <div className="conversation" role="log" aria-label="当前对话" aria-live="off">
           {messages.map((message, index) => <article key={message.id} className={`message message-${message.role}`}>
-            {message.role === 'user' ? <div className="user-bubble">{message.content}</div> : <>
+            {message.role === 'user' ? <>
+              {!!message.attachments?.length && <AttachmentList files={message.attachments} />}
+              {message.content && <div className="user-bubble">{message.content}</div>}
+            </> : <>
               <span className="sr-only">{message.model}</span>
               {message.content ? <div className={`markdown ${message.status === 'streaming' ? 'streaming' : ''}`}><Markdown remarkPlugins={[remarkGfm]}
                 components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>, img: ({ alt }) => <span className="image-placeholder">[图片{alt ? `：${alt}` : ''}]</span> }}>
@@ -157,16 +195,35 @@ export default function App() {
         {showScroll && <button className="scroll-button icon-button" aria-label="回到最新消息" onClick={() => {
           pinned.current = true; scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }); setShowScroll(false);
         }}><ArrowDown size={17} /></button>}
-        <form className="composer" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+        <form className="composer" onSubmit={(event) => { event.preventDefault(); void send(); }}
+          onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
+          onDrop={event => {
+            if (event.dataTransfer.files.length) { event.preventDefault(); void addFiles(Array.from(event.dataTransfer.files)); }
+          }}>
+          {!!attachments.length && <AttachmentList files={attachments} onRemove={id => {
+            if (!reading.current) setAttachments(items => items.filter(item => item.id !== id));
+          }} />}
+          {readingFiles && <div className="file-reading" role="status">正在读取附件…</div>}
+          {fileError && <div className="file-error" role="alert"><span>{fileError}</span><button type="button" aria-label="关闭附件提示" onClick={() => setFileError('')}><X size={16} /></button></div>}
+          <div className="composer-row">
+          <input ref={fileInput} type="file" accept={FILE_ACCEPT} multiple hidden aria-label="选择图片或附件"
+            onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void addFiles(files); }} />
+          <button type="button" className="attach-button" aria-label="上传图片或附件" title="上传图片或附件" disabled={busy || readingFiles}
+            onClick={() => fileInput.current?.click()}><Paperclip size={20} strokeWidth={1.6} /></button>
           <textarea ref={textarea} value={draft} rows={1} placeholder="发送消息" aria-label="消息"
             onChange={(event) => setDraft(event.target.value)}
+            onPaste={event => {
+              const files = Array.from(event.clipboardData.files);
+              if (files.length) { event.preventDefault(); void addFiles(files); }
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229 && window.matchMedia('(pointer: fine)').matches) {
                 event.preventDefault(); if (!busy) void send();
               }
             }} />
           {busy ? <button type="button" className="send-button stop-button" aria-label="停止生成" onClick={() => controller.current?.abort()}><Square size={13} fill="currentColor" /></button> :
-            <button type="submit" className="send-button" aria-label="发送消息" disabled={!draft.trim()}><ArrowUp size={21} strokeWidth={1.8} /></button>}
+            <button type="submit" className="send-button" aria-label="发送消息" disabled={readingFiles || (!draft.trim() && !attachments.length)}><ArrowUp size={21} strokeWidth={1.8} /></button>}
+          </div>
         </form>
       </footer>
 

@@ -1,6 +1,7 @@
 import type { Connection, Protocol } from './config';
+import type { Attachment } from './attachments';
 
-export interface Turn { role: 'user' | 'assistant'; content: string }
+export interface Turn { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] }
 
 export class ChatError extends Error {}
 
@@ -21,11 +22,45 @@ export function endpointFor(baseUrl: string, protocol: Protocol): string {
   return url.toString();
 }
 
+function wireTurn(turn: Turn, protocol: Protocol) {
+  const { role, content, attachments } = turn;
+  if (role !== 'user' || !attachments?.length) return { role, content };
+  const textType = protocol === 'responses' ? 'input_text' : 'text';
+  const parts: Record<string, unknown>[] = [];
+  if (content) parts.push({ type: textType, text: content });
+  for (const file of attachments) {
+    if (file.kind === 'text') {
+      parts.push({ type: textType, text: `附件：${file.name}\n\n${file.data}` });
+    } else if (protocol === 'messages' && file.kind === 'pdf' && file.pages?.length) {
+      parts.push({ type: 'text', text: `PDF 附件：${file.name}，以下 ${file.pages.length} 张图片依次是文件的每一页。` });
+      for (const page of file.pages) {
+        parts.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: page.slice(page.indexOf(',') + 1) } });
+      }
+    } else if (protocol === 'messages') {
+      parts.push({
+        type: file.kind === 'image' ? 'image' : 'document',
+        source: { type: 'base64', media_type: file.mime, data: file.data.slice(file.data.indexOf(',') + 1) },
+        ...(file.kind === 'pdf' ? { title: file.name } : {}),
+      });
+    } else if (file.kind === 'image') {
+      parts.push(protocol === 'responses'
+        ? { type: 'input_image', image_url: file.data }
+        : { type: 'image_url', image_url: { url: file.data } });
+    } else {
+      parts.push(protocol === 'responses'
+        ? { type: 'input_file', filename: file.name, file_data: file.data }
+        : { type: 'file', file: { filename: file.name, file_data: file.data } });
+    }
+  }
+  return { role, content: parts };
+}
+
 function requestBody(connection: Connection, turns: Turn[]) {
   const common = { model: connection.model.trim(), stream: true };
-  if (connection.protocol === 'responses') return { ...common, input: turns, store: false };
-  if (connection.protocol === 'messages') return { ...common, messages: turns, max_tokens: 8192 };
-  return { ...common, messages: turns };
+  const messages = turns.map(turn => wireTurn(turn, connection.protocol));
+  if (connection.protocol === 'responses') return { ...common, input: messages, store: false };
+  if (connection.protocol === 'messages') return { ...common, messages, max_tokens: 8192 };
+  return { ...common, messages };
 }
 
 function apiError(data: any): string | undefined {
@@ -56,10 +91,15 @@ export async function streamChat(
     headers['anthropic-dangerous-direct-browser-access'] = 'true';
   } else headers.Authorization = `Bearer ${connection.apiKey.trim()}`;
 
+  const body = JSON.stringify(requestBody(connection, turns));
+  if (new Blob([body]).size > 24 * 1024 * 1024) {
+    throw new ChatError('当前对话的附件总量过大，请开启新对话后发送较少的附件。');
+  }
+
   let response: Response;
   try {
     response = await fetch(endpointFor(connection.baseUrl, connection.protocol), {
-      method: 'POST', headers, body: JSON.stringify(requestBody(connection, turns)), signal,
+      method: 'POST', headers, body, signal,
       credentials: 'omit', referrerPolicy: 'no-referrer',
     });
   } catch (error) {
@@ -73,6 +113,7 @@ export async function streamChat(
       401: '模型连接认证失败。',
       403: '服务暂时拒绝了请求，请稍后重试。',
       404: '找不到接口或模型，请检查接口地址、接口格式和模型 ID。',
+      413: '附件或对话内容过大，请减少文件大小，或开启新对话。',
       429: '请求过于频繁或额度不足，请稍后重试或检查账户额度。',
     };
     throw new ChatError(messages[response.status] || apiError(data) || `服务暂时无法响应（${response.status}），请稍后重试。`);
