@@ -22,11 +22,11 @@ interface Message extends Turn {
 let messageSequence = 0;
 const messageId = () => `${Date.now()}-${++messageSequence}`;
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label = '复制回复' }: { text: string; label?: string }) {
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
-  return <button className="copy-button" aria-label="复制回复" title="复制回复" onClick={async () => {
+  return <button className="copy-button" aria-label={label} title={label} onClick={async () => {
     try { await navigator.clipboard.writeText(text); setState('copied'); }
     catch { setState('failed'); }
     clearTimeout(timer.current);
@@ -174,6 +174,7 @@ export default function App() {
             {message.role === 'user' ? <>
               {!!message.attachments?.length && <AttachmentList files={message.attachments} />}
               {message.content && <div className="user-bubble">{message.content}</div>}
+              {message.content && <CopyButton text={message.content} label="复制问题" />}
             </> : <>
               <span className="sr-only">{message.model}</span>
               {message.content ? <div className={`markdown ${message.status === 'streaming' ? 'streaming' : ''}`}><Markdown remarkPlugins={[remarkGfm]}
