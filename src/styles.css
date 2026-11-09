@@ -59,6 +59,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .copy-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 36px; min-height: 36px; padding: 6px; border-radius: 8px; color: #777; font-size: 12px; }
 .copy-button svg { width: 15px; height: 15px; }
 .stopped-label { color: #777; font-size: 12px; }
+.search-status { padding: 8px 0; color: #777; font-size: 12px; }
 .message-error { padding: 12px 14px; border: 1px solid #ddd; border-radius: 10px; color: #555; font-size: 13px; line-height: 1.7; margin-top: 12px; }
 .message-error p { margin: 0; }
 .thinking { display: flex; align-items: center; gap: 5px; height: 28px; }

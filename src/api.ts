@@ -1,5 +1,6 @@
 import type { Connection, Protocol } from './config';
 import type { Attachment } from './attachments';
+import { ResponseText } from './responseText';
 
 export interface Turn { role: 'user' | 'assistant'; content: string; attachments?: Attachment[] }
 
@@ -58,7 +59,10 @@ function wireTurn(turn: Turn, protocol: Protocol) {
 function requestBody(connection: Connection, turns: Turn[]) {
   const common = { model: connection.model.trim(), stream: true };
   const messages = turns.map(turn => wireTurn(turn, connection.protocol));
-  if (connection.protocol === 'responses') return { ...common, input: messages, store: false };
+  if (connection.protocol === 'responses') return {
+    ...common, input: messages, store: false,
+    tools: [{ type: 'web_search' }], tool_choice: 'auto',
+  };
   if (connection.protocol === 'messages') return { ...common, messages, max_tokens: 8192 };
   return { ...common, messages };
 }
@@ -73,9 +77,9 @@ function apiError(data: any): string | undefined {
 function fullText(data: any, protocol: Protocol): string {
   if (protocol === 'chat') return data.choices?.[0]?.message?.content || '';
   if (protocol === 'messages') return (data.content || []).filter((part: any) => part.type === 'text').map((part: any) => part.text).join('');
-  return data.output_text || (data.output || []).flatMap((item: any) => item.content || [])
-    .filter((part: any) => part.type === 'output_text' || part.type === 'refusal')
-    .map((part: any) => part.text || part.refusal || '').join('');
+  const output = new ResponseText();
+  output.snapshot(data);
+  return output.render();
 }
 
 export async function streamChat(
@@ -83,6 +87,7 @@ export async function streamChat(
   turns: Turn[],
   signal: AbortSignal,
   onText: (text: string) => void,
+  onActivity?: (searching: boolean) => void,
 ): Promise<void> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (connection.protocol === 'messages') {
@@ -137,6 +142,8 @@ export async function streamChat(
   let text = '';
   let finished = false;
   let limited = false;
+  const output = new ResponseText();
+  const searches = new Set<string>();
 
   const consume = (frame: string) => {
     const raw = frame.split(/\r?\n/).filter((line) => line.startsWith('data:'))
@@ -150,10 +157,17 @@ export async function streamChat(
     if (error) throw new ChatError(error);
     let delta = '';
     if (connection.protocol === 'responses') {
-      if (data.type === 'response.output_text.delta' || data.type === 'response.refusal.delta') delta = data.delta || '';
+      const searchId = data.item_id || data.item?.id || String(data.output_index ?? 0);
+      if (data.type === 'response.web_search_call.in_progress' || data.type === 'response.web_search_call.searching'
+        || (data.type === 'response.output_item.added' && data.item?.type === 'web_search_call')) searches.add(searchId);
+      if (data.type === 'response.web_search_call.completed'
+        || (data.type === 'response.output_item.done' && data.item?.type === 'web_search_call')) searches.delete(searchId);
+      onActivity?.(searches.size > 0);
+      output.event(data);
+      const nextText = output.render();
+      if (nextText !== text) { text = nextText; onText(text); }
       if (data.type === 'response.completed') {
         finished = true;
-        if (!text) delta = fullText(data.response, 'responses');
       }
       if (data.type === 'response.incomplete') throw new ChatError('回复未完成，可能已达到输出长度限制。可以重新尝试。');
       if (data.type === 'response.failed') throw new ChatError('模型未能完成回复，请重试。');

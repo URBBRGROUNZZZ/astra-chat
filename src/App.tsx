@@ -16,6 +16,7 @@ interface Message extends Turn {
   model?: string;
   status?: 'streaming' | 'done' | 'stopped' | 'error';
   error?: string;
+  searching?: boolean;
 }
 
 // randomUUID is unavailable on plain HTTP when testing from a phone over LAN.
@@ -132,6 +133,8 @@ export default function App() {
       await streamChat(current, history.filter((item) => (item.content || item.attachments?.length) && item.status !== 'error')
         .map(({ role, content, attachments }) => ({ role, content, attachments })), abort.signal, (content) => {
           clearTimeout(timer); timer = setTimeout(timeout, 120_000); update({ content });
+        }, (searching) => {
+          clearTimeout(timer); timer = setTimeout(timeout, 120_000); update({ searching });
         });
       update({ status: 'done' });
     } catch (error) {
@@ -180,7 +183,8 @@ export default function App() {
               {message.content ? <div className={`markdown ${message.status === 'streaming' ? 'streaming' : ''}`}><Markdown remarkPlugins={[remarkGfm]}
                 components={{ a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>, img: ({ alt }) => <span className="image-placeholder">[图片{alt ? `：${alt}` : ''}]</span> }}>
                 {message.content}
-              </Markdown></div> : message.status === 'streaming' ? <div className="thinking" aria-label="正在等待回复"><i /><i /><i /></div> : null}
+              </Markdown></div> : message.status === 'streaming' && !message.searching ? <div className="thinking" aria-label="正在等待回复"><i /><i /><i /></div> : null}
+              {message.status === 'streaming' && message.searching && <div className="search-status" role="status">正在联网搜索…</div>}
               {message.error && <div className="message-error" role="alert"><p>{message.error}</p></div>}
               {message.status !== 'streaming' && <div className="message-actions">
                 {message.content && <CopyButton text={message.content} />}
