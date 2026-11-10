@@ -61,9 +61,13 @@ function requestBody(connection: Connection, turns: Turn[]) {
   const messages = turns.map(turn => wireTurn(turn, connection.protocol));
   if (connection.protocol === 'responses') return {
     ...common, input: messages, store: false,
+    reasoning: { effort: 'high' },
     tools: [{ type: 'web_search' }], tool_choice: 'auto',
   };
-  if (connection.protocol === 'messages') return { ...common, messages, max_tokens: 8192 };
+  if (connection.protocol === 'messages') return {
+    ...common, messages, max_tokens: 8192,
+    thinking: { type: 'adaptive' }, output_config: { effort: 'high' },
+  };
   return { ...common, messages };
 }
 

@@ -124,6 +124,8 @@ test('Claude model switch uses Messages format and keeps current context', async
   await page.route('https://xcode.best/v1/messages', async (route) => {
     const body = route.request().postDataJSON();
     expect(body.model).toBe('claude-opus-5-5');
+    expect(body.thinking).toEqual({ type: 'adaptive' });
+    expect(body.output_config).toEqual({ effort: 'high' });
     expect(body.messages).toHaveLength(3);
     expect(Boolean(route.request().headers()['x-api-key'])).toBe(true);
     expect(route.request().headers()['anthropic-version']).toBe('2023-06-01');

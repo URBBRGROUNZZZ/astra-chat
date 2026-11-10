@@ -31,6 +31,7 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
   expect(bodies[0].tools).toEqual([{ type: 'web_search' }]);
+  expect(bodies[0].reasoning).toEqual({ effort: 'high' });
   expect(bodies[0].tool_choice).toBe('auto');
   expect(bodies[0].store).toBe(false);
   await expect(page.locator('.markdown')).toContainText('先查一下。');
