@@ -9,7 +9,7 @@
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
-#root { position: fixed; inset: 0; overflow: hidden; }
+#root { position: relative; width: 100%; height: 100%; overflow: hidden; }
 button, input, textarea, select { font: inherit; -webkit-tap-highlight-color: transparent; }
 button { border: 0; background: none; color: inherit; cursor: pointer; touch-action: manipulation; }
 button:disabled { opacity: .3; cursor: default; }

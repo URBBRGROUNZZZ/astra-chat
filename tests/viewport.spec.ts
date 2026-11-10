@@ -23,6 +23,12 @@ test('composer follows keyboard resize and Safari pan without scrolling the docu
   const shortHeight = (await input.boundingBox())!.height;
   await viewport(page, 430, 50, 'scroll');
   await input.fill(Array.from({ length: 16 }, (_, index) => `第 ${index + 1} 行`).join('\n'));
+  expect(await input.evaluate(element => {
+    const editor = element as HTMLTextAreaElement;
+    const rect = editor.getBoundingClientRect();
+    return document.activeElement === editor && editor.selectionStart === editor.value.length
+      && rect.top >= 50 && rect.bottom <= 480;
+  })).toBe(true);
   await expect.poll(async () => (await input.boundingBox())!.height).toBeGreaterThan(shortHeight);
   expect((await input.boundingBox())!.height).toBeLessThanOrEqual(144);
   await expect.poll(() => page.locator('.composer-area').evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBe(480);
