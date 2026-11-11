@@ -51,7 +51,6 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
-  const textarea = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const controller = useRef<AbortController | null>(null);
@@ -69,11 +68,6 @@ export default function App() {
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
   }, [menuOpen]);
-
-  useLayoutEffect(() => {
-    const element = textarea.current;
-    if (element) { element.style.height = 'auto'; element.style.height = `${Math.min(element.scrollHeight, 144)}px`; }
-  }, [draft]);
 
   useLayoutEffect(() => {
     if (pinned.current && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
@@ -215,7 +209,9 @@ export default function App() {
             onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; void addFiles(files); }} />
           <button type="button" className="attach-button" aria-label="上传图片或附件" title="上传图片或附件" disabled={busy || readingFiles}
             onClick={() => fileInput.current?.click()}><Paperclip size={20} strokeWidth={1.6} /></button>
-          <textarea ref={textarea} value={draft} rows={1} placeholder="发送消息" aria-label="消息"
+          <div className="editor">
+          <div className="editor-mirror" aria-hidden="true">{draft + '\u200b'}</div>
+          <textarea value={draft} rows={1} placeholder="发送消息" aria-label="消息"
             onChange={(event) => setDraft(event.target.value)}
             onPaste={event => {
               const files = Array.from(event.clipboardData.files);
@@ -226,6 +222,7 @@ export default function App() {
                 event.preventDefault(); if (!busy) void send();
               }
             }} />
+          </div>
           {busy ? <button type="button" className="send-button stop-button" aria-label="停止生成" onClick={() => controller.current?.abort()}><Square size={13} fill="currentColor" /></button> :
             <button type="submit" className="send-button" aria-label="发送消息" disabled={readingFiles || (!draft.trim() && !attachments.length)}><ArrowUp size={21} strokeWidth={1.8} /></button>}
           </div>
