@@ -33,6 +33,7 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
   expect(bodies[0].tools).toEqual([{ type: 'web_search' }]);
   expect(bodies[0].reasoning).toEqual({ effort: 'high' });
   expect(bodies[0].tool_choice).toBe('auto');
+  expect(bodies[0].instructions).toContain('联网搜索是可选工具');
   expect(bodies[0].store).toBe(false);
   await expect(page.locator('.markdown')).toContainText('先查一下。');
   await expect(page.locator('.markdown')).toContainText('中文与 🌍：已查到文档。');
@@ -46,6 +47,7 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
   await expect(page.getByRole('button', { name: '复制回复' })).toHaveCount(2);
   expect(bodies[1].input[1].content).toContain(url);
   expect(bodies[1].input).toHaveLength(3);
+  expect(bodies[1].instructions).toBe(bodies[0].instructions);
   await page.reload();
   await expect(page.getByRole('log')).toBeEmpty();
 });

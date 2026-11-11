@@ -63,6 +63,11 @@ function requestBody(connection: Connection, turns: Turn[]) {
     ...common, input: messages, store: false,
     reasoning: { effort: 'high' },
     tools: [{ type: 'web_search' }], tool_choice: 'auto',
+    instructions: '联网搜索是可选工具，不是回答前的必经步骤。先判断当前问题是否需要外部信息。'
+      + '日常聊天、写作润色、翻译、数学推理、通用编程、稳定的知识解释，以及仅根据用户提供的文字或附件进行分析，直接回答，不要搜索。'
+      + '只有用户明确要求联网查找、需要读取尚未提供内容的网页，或答案依赖最新/实时信息、必须核实且无法可靠回答的外部事实时，才使用 web_search。'
+      + '每一轮重新判断；上一轮搜索过，不代表后续解释、总结、改写或无关问题也需要搜索。已有对话信息足够时直接使用，不重复查询。'
+      + '用户要求不要联网时遵从，缺少信息就说明限制，不编造。没有实际调用搜索工具时，不要声称已搜索或已核实。',
   };
   if (connection.protocol === 'messages') return {
     ...common, messages, max_tokens: 8192,

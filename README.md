@@ -22,7 +22,7 @@ npm run dev
 1. 直接输入消息即可聊天，GPT / Claude 默认连接和密钥已内置，无需手动输入。
 2. 在顶部选择 GPT 或 Claude，开始聊天。支持流式回复、停止、复制、Markdown、失败重试。
 
-GPT（Astra）默认提供官方 Responses `web_search` 工具，由模型按需联网；也可以直接要求「联网搜索」。实际搜索时显示简短状态，回答中的来源引用可点击打开。搜索由 API 服务执行，不依赖本机运行，搜索是否可用及费用由中转服务决定。Claude 当前仍使用原有 Messages 接口，未启用搜索工具。
+GPT（Astra）提供官方 Responses `web_search` 工具，以 `tool_choice: auto` 配合每轮发送的使用规则，由模型判断是否需要联网。普通聊天、写作、翻译、数学、通用编程和已有材料分析直接回答；明确要求搜索、读取网页或需要核实最新外部事实时才搜索。搜索后的解释、总结和改写不应重复查询。实际搜索时显示简短状态，回答中的来源引用可点击打开。搜索由 API 服务执行，不依赖本机运行，搜索是否可用及费用由中转服务决定。Claude 当前仍使用原有 Messages 接口，未启用搜索工具。
 
 GPT 请求设置 `reasoning.effort: high`；Claude 请求设置自适应思考及 `output_config.effort: high`。
 
