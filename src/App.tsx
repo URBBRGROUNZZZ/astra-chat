@@ -40,7 +40,7 @@ function CopyButton({ text, label = '复制回复' }: { text: string; label?: st
 export default function App() {
   useViewport();
   const [connections] = useState(loadConnections);
-  const [selected, setSelected] = useState<ProviderId>('gpt');
+  const [selected, setSelected] = useState<ProviderId>('claude');
   const [menuOpen, setMenuOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');

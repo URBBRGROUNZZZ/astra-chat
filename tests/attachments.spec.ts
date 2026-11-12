@@ -19,9 +19,9 @@ for (const provider of ['GPT', 'Claude']) {
       await route.fulfill({ contentType: 'text/event-stream', body: provider === 'GPT' ? response : claudeResponse });
     });
     await page.goto('/');
-    if (provider === 'Claude') {
-      await page.getByRole('button', { name: 'GPT', exact: true }).click();
+    if (provider === 'GPT') {
       await page.getByRole('button', { name: 'Claude', exact: true }).click();
+      await page.getByRole('button', { name: 'GPT', exact: true }).click();
     }
     await picker(page).setInputFiles([png, pdf, note]);
     await expect(page.locator('.pending-attachments .attachment')).toHaveCount(3);
@@ -73,6 +73,8 @@ test('attachment-only send, removal, retry and model switch preserve the file', 
     else await route.fulfill({ contentType: 'text/event-stream', body: claudeResponse });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await picker(page).setInputFiles([png, note]);
   await expect(page.locator('.pending-attachments .attachment')).toHaveCount(2);
   await page.getByRole('button', { name: '移除 question.png' }).click();
@@ -95,6 +97,8 @@ test('DOCX text is extracted locally; unsupported and oversized files show usefu
     await route.fulfill({ contentType: 'text/event-stream', body: response });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await picker(page).setInputFiles({ name: 'archive.zip', mimeType: 'application/zip', buffer: Buffer.from('bad') });
   await expect(page.getByRole('alert')).toContainText('暂不支持');
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();

@@ -50,6 +50,8 @@ test('long conversation stays inside its scroller when the keyboard opens', asyn
     body: `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: '这是一段回复。\n\n'.repeat(70) })}\n\ndata: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed' } })}\n\n`,
   }));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.fill('长回复');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();

@@ -27,6 +27,8 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
     });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('联网搜索官方文档');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
@@ -65,6 +67,8 @@ test('search status follows actual tool events and search can be stopped', async
     };
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await expect(page.locator('.search-status')).toHaveCount(0);
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('查最新消息');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
@@ -87,6 +91,8 @@ test('JSON citation fallback preserves existing links and rejects unsafe citatio
     ] }] }],
   }) }));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('搜索');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
@@ -103,6 +109,8 @@ test('relay search rejection stays visible instead of silently retrying without 
     await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'web_search is not supported' } }) });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('联网');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('web_search is not supported');

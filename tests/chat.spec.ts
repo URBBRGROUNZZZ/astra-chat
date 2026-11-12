@@ -19,7 +19,7 @@ test('minimal chat exposes no connection or credential controls', async ({ page 
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: /设置|密钥|key/i })).toHaveCount(0);
   await expect(page.locator('input:not([type="file"]), select, dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: 'GPT', exact: true }).click();
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
   await expect(page.locator('#model-options button')).toHaveText(['GPT', 'Claude']);
   await page.keyboard.press('Escape');
   await expect(page.locator('#model-options')).toHaveCount(0);
@@ -45,25 +45,25 @@ test('bundled credentials work for both models without input and reload starts f
     }
   });
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'GPT', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Claude', exact: true })).toBeVisible();
   await send(page, '直接开始');
   await expect(page.locator('.empty-mark')).toHaveCount(0);
-  await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');
+  await expect(page.locator('.markdown')).toHaveText('自动连接 Claude。');
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
-  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '切换模型');
-  await expect(page.locator('.markdown').last()).toHaveText('自动连接 Claude。');
+  await expect(page.locator('.markdown').last()).toHaveText('自动连接 GPT。');
   await page.reload();
   await expect(page.locator('.user-bubble')).toHaveCount(0);
   await expect(page.locator('.empty-mark')).toHaveText('?');
-  await expect(page.getByRole('button', { name: 'GPT', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Claude', exact: true })).toBeVisible();
   await send(page, '新的会话');
-  await expect(page.locator('.markdown')).toHaveText('自动连接 GPT。');
+  await expect(page.locator('.markdown')).toHaveText('自动连接 Claude。');
   expect(calls).toEqual([
-    { provider: 'gpt', turns: 1, authorized: true },
-    { provider: 'claude', turns: 3, authorized: true },
-    { provider: 'gpt', turns: 1, authorized: true },
+    { provider: 'claude', turns: 1, authorized: true },
+    { provider: 'gpt', turns: 3, authorized: true },
+    { provider: 'claude', turns: 1, authorized: true },
   ]);
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
 });
@@ -79,6 +79,8 @@ test('old saved settings cannot override the built-in connection', async ({ page
     await route.fulfill({ contentType: 'text/event-stream', body: responseBody('连接正常。') });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '继续使用');
   await expect(page.locator('.markdown')).toHaveText('连接正常。');
   expect(calledBuiltIn).toBe(true);
@@ -93,6 +95,8 @@ test('Responses stream, conversation context, refresh isolation and secret stora
     await route.fulfill({ contentType: 'text/event-stream', body: responseBody('你好，世界。\n\n**一起把想法变清晰。**\n\n```js\nconst hello = "你好";\n```') });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '你好');
   await expect(page.locator('.markdown')).toContainText('你好，世界');
   await expect(page.locator('.markdown strong')).toHaveText('一起把想法变清晰。');
@@ -117,6 +121,8 @@ test('Responses stream, conversation context, refresh isolation and secret stora
 test('Claude model switch uses Messages format and keeps current context', async ({ page }) => {
   await page.route('https://xcode.best/v1/responses', (route) => route.fulfill({ contentType: 'text/event-stream', body: responseBody('我是 GPT。') }));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '你好 GPT');
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
   await page.getByRole('button', { name: 'GPT', exact: true }).click();
@@ -152,6 +158,8 @@ test('authentication errors retry the original turn without duplication', async 
     else await route.fulfill({ contentType: 'text/event-stream', body: responseBody('重试成功。') });
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '试试看');
   await expect(page.getByRole('alert')).toContainText('模型连接认证失败');
   await page.getByRole('button', { name: '重新尝试' }).click();
@@ -163,6 +171,8 @@ test('authentication errors retry the original turn without duplication', async 
 test('truncated streams show partial output and an actionable error', async ({ page }) => {
   await page.route('https://xcode.best/v1/responses', (route) => route.fulfill({ contentType: 'text/event-stream', body: frame({ type: 'response.output_text.delta', delta: '尚未完成的回复' }) }));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '中断测试');
   await expect(page.locator('.markdown')).toHaveText('尚未完成的回复');
   await expect(page.getByRole('alert')).toContainText('连接提前中断');
@@ -175,6 +185,8 @@ test('stop generation restores composer and allows a fresh conversation', async 
     await route.fulfill({ contentType: 'text/event-stream', body: responseBody('迟到的回复') }).catch(() => undefined);
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, '等待中');
   await expect(page.getByRole('button', { name: 'GPT', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '停止生成' }).click();
@@ -186,6 +198,8 @@ test('stop generation restores composer and allows a fresh conversation', async 
 test('non-streaming JSON fallback and safe Markdown rendering', async ({ page }) => {
   await page.route('https://xcode.best/v1/responses', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ output: [{ type: 'message', content: [{ type: 'output_text', text: '<script>window.bad = true</script>\n\n[危险链接](javascript:alert(1))\n\n![外部图片](https://tracker.example/secret)' }] }] }) }));
   await page.goto('/');
+  await page.getByRole('button', { name: 'Claude', exact: true }).click();
+  await page.getByRole('button', { name: 'GPT', exact: true }).click();
   await send(page, 'Markdown 安全测试');
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
   await expect(page.locator('.markdown script')).toHaveCount(0);
