@@ -1,0 +1,21 @@
+{
+  "name": "Chat",
+  "short_name": "Chat",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "./question-192-v2.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./question-512-v2.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
