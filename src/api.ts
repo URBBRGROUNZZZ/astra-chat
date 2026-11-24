@@ -91,6 +91,18 @@ function fullText(data: any, protocol: Protocol): string {
   return output.render();
 }
 
+// A stalled browser transport must not keep the composer locked after stop/timeout.
+async function abortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  let onAbort!: () => void;
+  const cancelled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try { return await Promise.race([operation, cancelled]); }
+  finally { signal.removeEventListener('abort', onAbort); }
+}
+
 export async function streamChat(
   connection: Connection,
   turns: Turn[],
@@ -112,17 +124,23 @@ export async function streamChat(
 
   let response: Response;
   try {
-    response = await fetch(endpointFor(connection.baseUrl, connection.protocol), {
+    response = await abortable(fetch(endpointFor(connection.baseUrl, connection.protocol), {
       method: 'POST', headers, body, signal,
       credentials: 'omit', referrerPolicy: 'no-referrer',
-    });
+    }).then(response => {
+      if (signal.aborted) {
+        void response.body?.cancel().catch(() => undefined);
+        throw signal.reason ?? new DOMException('Aborted', 'AbortError');
+      }
+      return response;
+    }), signal);
   } catch (error) {
     if (signal.aborted || error instanceof ChatError) throw error;
     throw new ChatError('无法连接到接口。请检查网络和接口地址，并确认中转服务允许网页跨域访问（CORS）。');
   }
 
   if (!response.ok) {
-    const data = await response.json().catch(() => null);
+    const data = await abortable(response.json(), signal).catch(() => null);
     const messages: Record<number, string> = {
       401: '模型连接认证失败。',
       403: '服务暂时拒绝了请求，请稍后重试。',
@@ -134,7 +152,7 @@ export async function streamChat(
   }
 
   if (response.headers.get('content-type')?.includes('application/json')) {
-    const data = await response.json();
+    const data = await abortable(response.json(), signal);
     const error = apiError(data);
     if (error) throw new ChatError(error);
     const text = fullText(data, connection.protocol);
@@ -195,7 +213,7 @@ export async function streamChat(
 
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await abortable(reader.read(), signal);
       buffer += decoder.decode(value, { stream: !done });
       let boundary: RegExpExecArray | null;
       while ((boundary = /\r?\n\r?\n/.exec(buffer))) {
@@ -208,7 +226,9 @@ export async function streamChat(
     if (!finished) throw new ChatError('连接提前中断，回复可能不完整。请重新尝试。');
     if (!text) throw new ChatError('接口没有返回文字，请检查模型 ID 和接口格式。');
   } finally {
-    await reader.cancel().catch(() => undefined);
+    // Cancellation can remain pending even after response.completed. Start cleanup,
+    // but unlock the UI without waiting for the underlying connection to close.
+    void reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }

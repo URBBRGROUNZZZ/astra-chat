@@ -1,11 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Copy, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { streamChat } from './api';
 import type { Turn } from './api';
-import { loadConnections, providers } from './config';
-import type { ProviderId } from './config';
+import { loadConnections } from './config';
 import { useViewport } from './useViewport';
 import { FILE_ACCEPT, MAX_FILES, MAX_TOTAL_BYTES, readAttachment } from './attachments';
 import type { Attachment } from './attachments';
@@ -40,8 +39,6 @@ function CopyButton({ text, label = '复制回复' }: { text: string; label?: st
 export default function App() {
   useViewport();
   const [connections] = useState(loadConnections);
-  const [selected, setSelected] = useState<ProviderId>('claude');
-  const [menuOpen, setMenuOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -52,22 +49,11 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
   const scroller = useRef<HTMLElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
   const controller = useRef<AbortController | null>(null);
   const pinned = useRef(true);
-  const current = connections[selected];
-  const currentName = providers.find((provider) => provider.id === selected)!.name;
+  const current = connections.gpt;
 
   useEffect(() => () => controller.current?.abort(), []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (event: PointerEvent) => { if (!menu.current?.contains(event.target as Node)) setMenuOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false); };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', escape);
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
-  }, [menuOpen]);
 
   useLayoutEffect(() => {
     if (pinned.current && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
@@ -144,17 +130,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
-          <div className="model-picker" ref={menu}>
-            <button className="model-trigger" aria-expanded={menuOpen} aria-controls="model-options" disabled={busy}
-              onClick={() => setMenuOpen(!menuOpen)}>{currentName}<ChevronDown size={15} /></button>
-            {menuOpen && <div className="model-menu" id="model-options">
-              {providers.map((provider) => <button key={provider.id} aria-pressed={selected === provider.id}
-                onClick={() => { setSelected(provider.id); setMenuOpen(false); }}>
-                <span>{provider.name}</span>
-                {selected === provider.id && <Check size={16} />}
-              </button>)}
-            </div>}
-          </div>
+        <span className="model-label">GPT</span>
         <div className="header-actions">
           <button className="icon-button" title="新对话" aria-label="新对话" disabled={busy || readingFiles || (messages.length === 0 && attachments.length === 0 && !draft && !fileError)}
             onClick={() => { setMessages([]); setDraft(''); setAttachments([]); setFileError(''); setShowScroll(false); pinned.current = true; }}><Plus size={21} strokeWidth={1.5} /></button>

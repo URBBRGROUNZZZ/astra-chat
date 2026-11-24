@@ -1,6 +1,6 @@
 import embedded from './embedded-credentials.json';
 
-export type ProviderId = 'gpt' | 'claude';
+export type ProviderId = 'gpt';
 export type Protocol = 'responses' | 'messages' | 'chat';
 
 export interface Connection {
@@ -14,12 +14,10 @@ export type Connections = Record<ProviderId, Connection>;
 
 export const providers: { id: ProviderId; name: string }[] = [
   { id: 'gpt', name: 'GPT' },
-  { id: 'claude', name: 'Claude' },
 ];
 
 const defaults: Connections = {
   gpt: { baseUrl: 'https://xcode.best/v1', model: 'gpt-6-astra', protocol: 'responses', apiKey: '' },
-  claude: { baseUrl: 'https://xcode.best/v1', model: 'claude-opus-5-5', protocol: 'messages', apiKey: '' },
 };
 
 export async function initializeCredentials(): Promise<void> {
