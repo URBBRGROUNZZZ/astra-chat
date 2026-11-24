@@ -17,7 +17,7 @@ export const providers: { id: ProviderId; name: string }[] = [
 ];
 
 const defaults: Connections = {
-  gpt: { baseUrl: 'https://xcode.best/v1', model: 'gpt-6-astra', protocol: 'responses', apiKey: '' },
+  gpt: { baseUrl: 'https://xcode.best/v1', model: 'gpt-6.2-astra', protocol: 'responses', apiKey: '' },
 };
 
 export async function initializeCredentials(): Promise<void> {

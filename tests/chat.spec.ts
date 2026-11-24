@@ -66,7 +66,7 @@ test('old saved settings cannot override the built-in connection', async ({ page
   let calledBuiltIn = false;
   await page.route('https://xcode.best/v1/responses', async route => {
     calledBuiltIn = true;
-    expect(route.request().postDataJSON().model).toBe('gpt-6-astra');
+    expect(route.request().postDataJSON().model).toBe('gpt-6.2-astra');
     await route.fulfill({ contentType: 'text/event-stream', body: responseBody('连接正常。') });
   });
   await page.goto('/');
