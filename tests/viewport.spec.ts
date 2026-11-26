@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useModel } from './helpers';
 import type { Page } from '@playwright/test';
 
 async function viewport(page: Page, height: number, offsetTop: number, event = 'resize') {
@@ -16,6 +17,7 @@ async function viewport(page: Page, height: number, offsetTop: number, event = '
 test('composer follows keyboard resize and Safari pan without scrolling the document', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.click();
   await input.fill('你好');
@@ -45,11 +47,12 @@ test('composer follows keyboard resize and Safari pan without scrolling the docu
 
 test('long conversation stays inside its scroller when the keyboard opens', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.route('https://xcode.best/v1/responses', route => route.fulfill({
+  await page.route('https://xcodebest.com/v1/responses', route => route.fulfill({
     contentType: 'text/event-stream',
     body: `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: '这是一段回复。\n\n'.repeat(70) })}\n\ndata: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed' } })}\n\n`,
   }));
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.fill('长回复');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
@@ -67,6 +70,7 @@ test('long conversation stays inside its scroller when the keyboard opens', asyn
 test('repeated keyboard dismissal restores the bottom composer without losing the draft or selection', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   for (let cycle = 0; cycle < 3; cycle++) {
     await input.focus();
@@ -101,6 +105,7 @@ test('repeated keyboard dismissal restores the bottom composer without losing th
 test('restoring, rotating and zooming do not leave a translated or collapsed editor', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.fill('恢复时保留草稿');
   await viewport(page, 430, 50);
@@ -135,6 +140,7 @@ test('restoring, rotating and zooming do not leave a translated or collapsed edi
 test('multiline typing grows naturally, keeps the end visible and shrinks after clearing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.focus();
   await viewport(page, 430, 0);

@@ -19,11 +19,11 @@ npm run dev
 
 ## 使用
 
-直接输入消息即可使用 GPT 6.2 Astra（`gpt-6.2-astra`），连接和密钥已内置，无需手动输入。支持流式回复、停止、复制、Markdown、失败重试。
+左上角可在 GPT 6.2 Astra（`gpt-6.2-astra`）和 Claude（`claude-fable-5-2`）之间切换，连接和密钥已内置，无需手动输入。支持流式回复、停止、复制、Markdown、失败重试。
 
-GPT（Astra）提供官方 Responses `web_search` 工具，以 `tool_choice: auto` 配合每轮发送的使用规则，由模型判断是否需要联网。普通聊天、写作、翻译、数学、通用编程和已有材料分析直接回答；明确要求搜索、读取网页或需要核实最新外部事实时才搜索。搜索后的解释、总结和改写不应重复查询。实际搜索时显示简短状态，回答中的来源引用可点击打开。搜索由 API 服务执行，不依赖本机运行，搜索是否可用及费用由中转服务决定。
+两个模型都启用联网搜索。GPT（Astra）使用官方 Responses `web_search` 工具（`tool_choice: auto`），Claude 使用服务端 `web_search_20250305` 工具；每轮发送同一套使用规则，由模型判断是否需要联网：明确要求搜索、问题涉及“最新/最近/今天”等时间词或新闻、价格、版本发布等会变化的时效性事实时搜索；普通聊天、写作、翻译、数学、通用编程和已有材料分析直接回答；对上一轮搜索结果的追问不重复查询；实际搜索过的回答会在末尾列出来源链接。搜索由 API 服务执行，不依赖本机运行，搜索是否可用及费用由中转服务决定。
 
-GPT 请求设置 `reasoning.effort: high`。
+GPT 请求设置 `reasoning.effort: high`；Claude 请求设置自适应思考（`thinking: { type: 'adaptive' }`）和 `output_config.effort: high`，最大输出 32000 tokens。
 
 点击输入框左侧的回形针选择图片或附件，也可粘贴图片、拖入文件。支持 JPG、PNG、WebP、GIF（按静态画面读取）、PDF、DOCX、TXT、Markdown、CSV、JSON 和常见代码文件；可以只发附件，不必输入文字。单个文件最多 5 MB，每次最多 6 个、合计 15 MB。文件名旁的「×」可在发送前移除附件。
 
@@ -33,7 +33,7 @@ GPT 请求设置 `reasoning.effort: high`。
 
 网页不提供连接配置、密钥输入或密钥查看功能。连接地址和模型由维护者在 `src/config.ts` 中管理。
 
-点击「+」开启新会话。刷新或重新打开网页会清空聊天，仅使用 GPT。不读取旧版本的浏览器连接设置，不在浏览器存储中保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
+点击「+」开启新会话。刷新或重新打开网页会清空聊天，并回到 Claude；模型选择不写入浏览器存储。不读取旧版本的浏览器连接设置，不在浏览器存储中保存聊天或密钥，不使用 Cookie、IndexedDB 或服务端会话。OpenAI Responses 请求设置 `store: false`；中转服务自身的数据保留策略由服务方决定。
 
 桌面使用 Enter 发送、Shift + Enter 换行；手机使用发送按钮，回车换行。复制需要 HTTPS 或 localhost；局域网 HTTP 环境可以长按选择文字复制。
 
@@ -45,7 +45,7 @@ GPT 请求设置 `reasoning.effort: high`。
 | Anthropic Messages | `/v1/messages` | `x-api-key` |
 | Chat Completions | `/v1/chat/completions` | `Authorization: Bearer …` |
 
-地址支持域名、带 `/v1` 的基础地址和完整接口路径；自定义前缀请填写完整基础地址。底层保留其他协议适配器，页面仅配置 GPT Responses。Messages 的默认最大输出为 8192 tokens。
+地址支持域名、带 `/v1` 的基础地址和完整接口路径；自定义前缀请填写完整基础地址。底层保留三种协议适配器，页面配置 GPT Responses 和 Claude Messages。Messages 的最大输出为 32000 tokens。
 
 服务需允许网页来源跨域请求，以及对应认证请求头。网络错误会提示检查 CORS；前端无法绕过服务端跨域限制。未添加后端或 Worker。
 
@@ -63,7 +63,7 @@ npm run build
 npm run build -- --base=/astra-chat/
 ```
 
-按站点所有者要求，默认 API Key 使用 AES-256-GCM 加密后内置在前端，浏览器自动解密。解密材料也随网页发布，因此访问者仍可提取密钥；这只避免源码中的明文展示，不构成访问控制。
+按站点所有者要求，默认 API Key 使用 AES-256-GCM 加密后内置在前端，浏览器自动解密。解密优先使用 WebCrypto；部分旧安卓 WebView（如小米设备）缺少 SubtleCrypto，会自动改用内置的纯 JavaScript AES-GCM 实现。解密材料也随网页发布，因此访问者仍可提取密钥；这只避免源码中的明文展示，不构成访问控制。
 
 显式运行 `node scripts/embed-credentials.mjs` 可从本机 Codex / Claude 配置重新生成 `src/embedded-credentials.json`，然后提交并推送以更新线上版本。生成器不会打印或落盘明文密钥，普通构建不会读取本机配置。自动解密需要 HTTPS 或 localhost；换用其他接口地址时需要自行配置密钥。
 

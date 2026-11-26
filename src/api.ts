@@ -56,6 +56,16 @@ function wireTurn(turn: Turn, protocol: Protocol) {
   return { role, content: parts };
 }
 
+function searchRules(): string {
+  const today = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
+  return `今天是 ${today}。联网搜索是可选工具，每轮先判断问题是否需要外部信息，再决定是否调用。`
+    + '需要联网：用户明确要求搜索、打开某个网页或核实信息；问题涉及新闻、赛事、价格、股价、天气、航班、政策、产品发布或版本号等会变化的时效性事实；问题中出现“最新”“最近”“今天”“刚刚”“现在”等时间词；你对关键外部事实没有把握且答错影响较大。'
+    + '不需要联网：日常聊天、写作润色、翻译、数学与逻辑推理、通用编程、稳定的定义与历史知识，以及仅根据用户提供的文字或附件进行分析；日期、星期和简单换算直接回答。'
+    + '对上一轮搜索结果的解释、总结、改写或追问直接使用已有信息，不重复搜索；只有需要核实新的信息时才再次搜索。'
+    + '用户要求不要联网时遵从。需要联网但工具不可用或没有结果时，明确说明无法核实，不编造。'
+    + '实际搜索过的回答末尾列出用到的来源链接；没有实际调用搜索工具时，不要声称已搜索或已核实。';
+}
+
 function requestBody(connection: Connection, turns: Turn[]) {
   const common = { model: connection.model.trim(), stream: true };
   const messages = turns.map(turn => wireTurn(turn, connection.protocol));
@@ -63,15 +73,13 @@ function requestBody(connection: Connection, turns: Turn[]) {
     ...common, input: messages, store: false,
     reasoning: { effort: 'high' },
     tools: [{ type: 'web_search' }], tool_choice: 'auto',
-    instructions: '联网搜索是可选工具，不是回答前的必经步骤。先判断当前问题是否需要外部信息。'
-      + '日常聊天、写作润色、翻译、数学推理、通用编程、稳定的知识解释，以及仅根据用户提供的文字或附件进行分析，直接回答，不要搜索。'
-      + '只有用户明确要求联网查找、需要读取尚未提供内容的网页，或答案依赖最新/实时信息、必须核实且无法可靠回答的外部事实时，才使用 web_search。'
-      + '每一轮重新判断；上一轮搜索过，不代表后续解释、总结、改写或无关问题也需要搜索。已有对话信息足够时直接使用，不重复查询。'
-      + '用户要求不要联网时遵从，缺少信息就说明限制，不编造。没有实际调用搜索工具时，不要声称已搜索或已核实。',
+    instructions: searchRules(),
   };
   if (connection.protocol === 'messages') return {
-    ...common, messages, max_tokens: 8192,
+    ...common, messages, max_tokens: 32000,
+    system: searchRules(),
     thinking: { type: 'adaptive' }, output_config: { effort: 'high' },
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
   };
   return { ...common, messages };
 }
@@ -109,6 +117,7 @@ export async function streamChat(
   signal: AbortSignal,
   onText: (text: string) => void,
   onActivity?: (searching: boolean) => void,
+  onProgress?: () => void,
 ): Promise<void> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (connection.protocol === 'messages') {
@@ -171,6 +180,19 @@ export async function streamChat(
   let limited = false;
   const output = new ResponseText();
   const searches = new Set<string>();
+  const sources: { url: string; title?: string }[] = [];
+  let messageSearching = false;
+
+  const appendSources = () => {
+    if (!sources.length) return;
+    const links = sources.map((source, index) => {
+      const url = encodeURI(source.url).replace(/\(/g, '%28').replace(/\)/g, '%29');
+      const title = (source.title || source.url).replace(/[[\]]/g, '');
+      return `${index + 1}. [${title}](${url})`;
+    });
+    text += `\n\n来源：\n${links.join('\n')}`;
+    onText(text);
+  };
 
   const consume = (frame: string) => {
     const raw = frame.split(/\r?\n/).filter((line) => line.startsWith('data:'))
@@ -180,6 +202,7 @@ export async function streamChat(
     let data: any;
     try { data = JSON.parse(raw); }
     catch { throw new ChatError('接口返回了无法解析的数据，请检查接口格式。'); }
+    onProgress?.();
     const error = apiError(data);
     if (error) throw new ChatError(error);
     let delta = '';
@@ -199,9 +222,26 @@ export async function streamChat(
       if (data.type === 'response.incomplete') throw new ChatError('回复未完成，可能已达到输出长度限制。可以重新尝试。');
       if (data.type === 'response.failed') throw new ChatError('模型未能完成回复，请重试。');
     } else if (connection.protocol === 'messages') {
-      if (data.type === 'content_block_start' && data.content_block?.type === 'text') delta = data.content_block.text || '';
-      if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') delta = data.delta.text || '';
-      if (data.type === 'message_stop') finished = true;
+      const block = data.type === 'content_block_start' ? data.content_block : undefined;
+      if (block?.type === 'text') { delta = block.text || ''; if (messageSearching) { messageSearching = false; onActivity?.(false); } }
+      if (block?.type === 'server_tool_use' || block?.type === 'web_search_tool_result') {
+        if (!messageSearching) { messageSearching = true; onActivity?.(true); }
+      }
+      if (data.type === 'content_block_delta') {
+        if (data.delta?.type === 'text_delta') delta = data.delta.text || '';
+        if (data.delta?.type === 'citations_delta') {
+          const citation = data.delta.citation;
+          if (typeof citation?.url === 'string' && /^https?:/i.test(citation.url)
+            && !sources.some(source => source.url === citation.url)) {
+            sources.push({ url: citation.url, title: typeof citation.title === 'string' ? citation.title : undefined });
+          }
+        }
+      }
+      if (data.type === 'message_stop') {
+        finished = true;
+        if (messageSearching) { messageSearching = false; onActivity?.(false); }
+        appendSources();
+      }
       if (data.type === 'message_delta' && data.delta?.stop_reason === 'max_tokens') limited = true;
     } else {
       delta = data.choices?.[0]?.delta?.content || '';

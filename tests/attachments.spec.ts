@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useModel } from './helpers';
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 
@@ -12,11 +13,12 @@ const picker = (page: Page) => page.locator('input[type="file"]');
 
 test('GPT sends images, PDF and text and keeps them in context', async ({ page }) => {
   const calls: any[] = [];
-  await page.route('https://xcode.best/v1/**', async route => {
+  await page.route('https://xcodebest.com/v1/**', async route => {
     calls.push(route.request().postDataJSON());
     await route.fulfill({ contentType: 'text/event-stream', body: response });
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await picker(page).setInputFiles([png, pdf, note]);
   await expect(page.locator('.pending-attachments .attachment')).toHaveCount(3);
   await expect(page.locator('.pending-attachments img')).toBeVisible();
@@ -47,7 +49,7 @@ test('GPT sends images, PDF and text and keeps them in context', async ({ page }
 
 test('attachment-only send, removal and retry preserve the file', async ({ page }) => {
   let attempts = 0;
-  await page.route('https://xcode.best/v1/**', async route => {
+  await page.route('https://xcodebest.com/v1/**', async route => {
     const body = route.request().postDataJSON();
     const turns = body.input || body.messages;
     expect(turns).toHaveLength(1);
@@ -58,6 +60,7 @@ test('attachment-only send, removal and retry preserve the file', async ({ page 
     else await route.fulfill({ contentType: 'text/event-stream', body: response });
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await picker(page).setInputFiles([png, note]);
   await expect(page.locator('.pending-attachments .attachment')).toHaveCount(2);
   await page.getByRole('button', { name: '移除 question.png' }).click();
@@ -73,11 +76,12 @@ test('attachment-only send, removal and retry preserve the file', async ({ page 
 
 test('DOCX text is extracted locally; unsupported and oversized files show useful errors', async ({ page }) => {
   let text = '';
-  await page.route('https://xcode.best/v1/responses', async route => {
+  await page.route('https://xcodebest.com/v1/responses', async route => {
     text = route.request().postDataJSON().input[0].content[0].text;
     await route.fulfill({ contentType: 'text/event-stream', body: response });
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await picker(page).setInputFiles({ name: 'archive.zip', mimeType: 'application/zip', buffer: Buffer.from('bad') });
   await expect(page.getByRole('alert')).toContainText('暂不支持');
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled();
@@ -93,6 +97,7 @@ test('DOCX text is extracted locally; unsupported and oversized files show usefu
 
 test('pasting files and dropping files add attachments, clear restores the empty composer', async ({ page }) => {
   await page.goto('/');
+  await useModel(page, 'GPT');
   await page.getByRole('textbox', { name: '消息', exact: true }).evaluate(element => {
     const data = new DataTransfer();
     data.items.add(new File(['pasted'], 'paste.txt', { type: 'text/plain' }));
@@ -113,6 +118,7 @@ test('pasting files and dropping files add attachments, clear restores the empty
 test('attachment strip stays bounded with multiple files and a reduced keyboard viewport', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await picker(page).setInputFiles(Array.from({ length: 7 }, (_, index) => ({ ...png, name: `image-${index}.png` })));
   await expect(page.locator('.pending-attachments .attachment')).toHaveCount(6);
   await expect(page.getByRole('alert')).toContainText('最多添加 6 个');

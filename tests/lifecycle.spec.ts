@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useModel } from './helpers';
 
 for (const phase of ['completed', 'reading', 'headers', 'json'] as const) {
   test(`can send again when ${phase} transport cleanup stalls`, async ({ page }) => {
@@ -6,7 +7,7 @@ for (const phase of ['completed', 'reading', 'headers', 'json'] as const) {
       const realFetch = window.fetch;
       let attempts = 0;
       window.fetch = async (input, init) => {
-        if (!String(input).includes('xcode.best')) return realFetch(input, init);
+        if (!String(input).includes('xcodebest.com')) return realFetch(input, init);
         attempts++;
         const frame = (data: unknown) => `data: ${JSON.stringify(data)}\n\n`;
         const answer = frame({ type: 'response.output_text.delta', delta: `回复 ${attempts}` }) + frame({ type: 'response.completed' });
@@ -23,6 +24,7 @@ for (const phase of ['completed', 'reading', 'headers', 'json'] as const) {
       };
     }, { phase });
     await page.goto('/');
+  await useModel(page, 'GPT');
     const input = page.getByRole('textbox', { name: '消息', exact: true });
     const send = page.getByRole('button', { name: '发送消息', exact: true });
     await input.fill('第一问');
@@ -45,13 +47,14 @@ test('idle timeout unlocks a stalled read and permits the next question', async 
     const realFetch = window.fetch;
     let attempts = 0;
     window.fetch = async (input, init) => {
-      if (!String(input).includes('xcode.best')) return realFetch(input, init);
+      if (!String(input).includes('xcodebest.com')) return realFetch(input, init);
       if (++attempts === 1) return new Response(new ReadableStream({ cancel() { return new Promise<void>(() => {}); } }), { headers: { 'Content-Type': 'text/event-stream' } });
       return new Response('data: {"type":"response.output_text.delta","delta":"恢复成功"}\n\ndata: {"type":"response.completed"}\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
     };
   });
   await page.clock.install();
   await page.goto('/');
+  await useModel(page, 'GPT');
   const input = page.getByRole('textbox', { name: '消息', exact: true });
   await input.fill('等待超时');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();

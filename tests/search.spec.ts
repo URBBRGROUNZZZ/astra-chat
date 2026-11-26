@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useModel } from './helpers';
 
 const frame = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
 const url = 'https://developers.openai.com/api/docs/guides/tools-web-search';
@@ -14,7 +15,7 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
     { type: 'message', content: [{ type: 'output_text', text: answer, annotations: [annotation] }] },
   ];
   const bodies: any[] = [];
-  await page.route('https://xcode.best/v1/responses', async route => {
+  await page.route('https://xcodebest.com/v1/responses', async route => {
     bodies.push(route.request().postDataJSON());
     await route.fulfill({ contentType: 'text/event-stream', body:
       frame({ type: 'response.output_text.delta', output_index: 0, content_index: 0, delta: '先查一下。\n\n' }) +
@@ -27,6 +28,7 @@ test('Astra offers automatic search and renders citations from streamed multi-pa
     });
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('联网搜索官方文档');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
@@ -56,7 +58,7 @@ test('search status follows actual tool events and search can be stopped', async
   await page.addInitScript(() => {
     const original = window.fetch;
     window.fetch = async (input, init) => {
-      if (!String(input).includes('xcode.best/v1/responses')) return original(input, init);
+      if (!String(input).includes('xcodebest.com/v1/responses')) return original(input, init);
       const stream = new ReadableStream({ start(controller) {
         controller.enqueue(new TextEncoder().encode('data: {"type":"response.web_search_call.searching","item_id":"s1"}\n\n'));
         init?.signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')));
@@ -65,6 +67,7 @@ test('search status follows actual tool events and search can be stopped', async
     };
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await expect(page.locator('.search-status')).toHaveCount(0);
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('查最新消息');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
@@ -78,7 +81,7 @@ test('search status follows actual tool events and search can be stopped', async
 test('JSON citation fallback preserves existing links and rejects unsafe citation URLs', async ({ page }) => {
   const text = `文档：[官方文档](${url})。第二个来源。`;
   const second = 'https://example.com/reference';
-  await page.route('https://xcode.best/v1/responses', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+  await page.route('https://xcodebest.com/v1/responses', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
     output: [{ type: 'message', content: [{ type: 'output_text', text, annotations: [
       { type: 'url_citation', url, start_index: 0, end_index: text.length },
       { type: 'url_citation', url: second, start_index: 0, end_index: text.length },
@@ -87,6 +90,7 @@ test('JSON citation fallback preserves existing links and rejects unsafe citatio
     ] }] }],
   }) }));
   await page.goto('/');
+  await useModel(page, 'GPT');
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('搜索');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('button', { name: '复制回复' })).toBeVisible();
@@ -97,12 +101,13 @@ test('JSON citation fallback preserves existing links and rejects unsafe citatio
 
 test('relay search rejection stays visible instead of silently retrying without tools', async ({ page }) => {
   let calls = 0;
-  await page.route('https://xcode.best/v1/responses', async route => {
+  await page.route('https://xcodebest.com/v1/responses', async route => {
     calls++;
     expect(route.request().postDataJSON().tools).toEqual([{ type: 'web_search' }]);
     await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: { message: 'web_search is not supported' } }) });
   });
   await page.goto('/');
+  await useModel(page, 'GPT');
   await page.getByRole('textbox', { name: '消息', exact: true }).fill('联网');
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('web_search is not supported');
